@@ -1,6 +1,6 @@
 {
   "name": "pi-report-issue",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Pi extension to enhance by AI and report GitHub issues from the chat using /ri command",
   "keywords": [
@@ -11,8 +11,12 @@
     "github"
   ],
   "pi": {
-    "extensions": ["./src/index.ts"],
-    "images": ["./src/assets/icon.png"]
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "images": [
+      "./src/assets/icon.png"
+    ]
   },
   "scripts": {
     "lint": "biome lint src/",
