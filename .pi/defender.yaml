@@ -1,0 +1,4 @@
+defaultMode: strict
+strictModeWhiteList:
+  - ^ls\b
+  - ^mkdir\b
