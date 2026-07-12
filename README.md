@@ -41,8 +41,9 @@ Then restart pi or run `/reload`.
 The agent will:
 1. Analyze the message to determine if it's a bug or feature request
 2. Use project context (branch, recent commits, etc.) to write a better description
-3. Create a descriptive title and enhanced description
-4. Create the issue on the current repository via `gh issue create`
+3. Search for existing similar issues and mention them as "Possible duplicates: #X, #Y" so GitHub interlinks them
+4. Create a descriptive title and enhanced description
+5. Create the issue on the current repository via `gh issue create`
 
 ### Report to a specific repository
 
@@ -79,8 +80,10 @@ You can combine flags:
 1. The `/ri` command parses your message and flags
 2. Resolves the target GitHub repository and collects project context
 3. Spawns a **subagent** — a separate `pi` process with an isolated context window
-4. The subagent's LLM analyzes your message, formats it, and calls the `create_github_issue` tool
-5. The issue URL is reported back to you as a notification — while you keep working
+4. The subagent's LLM analyzes your message, extracts keywords, and searches for existing similar issues via `gh search issues`
+5. If similar issues are found, they are mentioned as "Possible duplicates" in the new issue body — GitHub auto-interlinks them
+6. The subagent formats the issue and calls the `create_github_issue` tool
+7. The issue URL is shown as a notification — while you keep working
 
 ## Requirements
 

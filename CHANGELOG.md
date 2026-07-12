@@ -1,6 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [v2.0.1]
+
+### Added
+- Duplicate issue detection: subagent now searches for existing similar issues via `gh search issues` before creating a new one (#2)
+  - Extracts 3-5 meaningful keywords from the user's message
+  - Searches the target repo for open issues matching those keywords
+  - If similar issues are found, mentions them as "Possible duplicates: #X, #Y" in the issue body so GitHub auto-interlinks them
 
 ### Changed
 - `/ri` command now spawns a subagent (separate `pi` process) instead of running inline

@@ -12,3 +12,4 @@ strictModeWhiteList:
   - ^git remote\b
   - ^git branch\b
   - ^git log\b
+  - ^biome\b

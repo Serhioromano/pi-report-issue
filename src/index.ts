@@ -173,15 +173,25 @@ export default function (pi: ExtensionAPI) {
 			const diagnosticsMd = await collectDiagnostics(pi, ctx.cwd);
 
 			// 5. Build the task for the subagent
+			const duplicateCheckStep = [
+				"4. BEFORE creating the issue, search the target repo for existing similar issues:",
+				"   a. Extract 3-5 meaningful keywords from the user's message (NOT generic words like 'error', 'bug', 'fix').",
+				`   b. Run: gh search issues "KEYWORDS" --repo=${repo.repo} --state=open --limit=10 --json number,title,url`,
+				"   c. If any existing issues describe the SAME problem or feature, include a line at the top of the issue body:",
+				"      > Possible duplicates: #123, #456",
+				"      (use the issue numbers from the search results — GitHub will auto-link them).",
+				"   d. Always proceed to step 5 and create the issue.",
+			].join("\n");
+
 			const extendedTasks = parsed.extended
-				? "6. AFTER creating the issue, search the codebase for the root cause of the problem. Use read/grep tools to examine relevant source files. Trace the issue to specific code.\n" +
-					'7. Include a "## Root Cause Analysis" section in the issue body when creating it. Add file paths, line numbers, and a clear explanation.\n' +
-					'8. If a fix is obvious and safe, include a "## Proposed Fix" section in the issue body. Do NOT apply the fix — only document it.\n'
+				? "7. AFTER creating the issue, search the codebase for the root cause of the problem. Use read/grep tools to examine relevant source files. Trace the issue to specific code.\n" +
+					'8. Include a "## Root Cause Analysis" section in the issue body when creating it. Add file paths, line numbers, and a clear explanation.\n' +
+					'9. If a fix is obvious and safe, include a "## Proposed Fix" section in the issue body. Do NOT apply the fix — only document it.\n'
 				: "";
 
 			const stopInstruction = parsed.extended
-				? "9. Report your findings to the user. Do NOT edit any source files.\n"
-				: "6. STOP. Report the issue URL to the user. Do NOT fix the issue. Do NOT edit any source files. Do NOT update CHANGELOG.md, README.md, or AGENTS.md. The user will handle the fix separately.\n";
+				? "10. Report your findings to the user. Do NOT edit any source files.\n"
+				: "7. STOP. Report the issue URL to the user. Do NOT fix the issue. Do NOT edit any source files. Do NOT update CHANGELOG.md, README.md, or AGENTS.md. The user will handle the fix separately.\n";
 
 			const task = [
 				`The user reported an issue for **${repo.repo}**.`,
@@ -195,7 +205,8 @@ export default function (pi: ExtensionAPI) {
 				"1. Analyze the message — is this a **bug report** or **feature request**?",
 				"2. Create a concise, descriptive issue title (max 80 chars)",
 				"3. Enhance the description: add clarity, context, steps to reproduce (for bugs) or use case (for features). Keep it in the user's voice.",
-				`4. Call the **create_github_issue** tool with repo="${repo.repo}", title, body, and label ("bug" or "enhancement").`,
+				duplicateCheckStep,
+				`5. Call the **create_github_issue** tool with repo="${repo.repo}", title, body, and label ("bug" or "enhancement").`,
 				extendedTasks,
 				stopInstruction,
 				"Project context for your analysis (use this to write a better issue — do NOT copy this into the issue body verbatim):",
