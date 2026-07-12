@@ -43,11 +43,11 @@ publish:
 		git add -A; \
 		git commit -m "Prepare for new version $(v)"; \
 	fi
-	@git pull --rebase origin master
-	@git push origin master
+	@git pull --rebase origin main
+	@git push origin main
 	@newver=$$(npm version $(v) 2>&1 | tail -1); \
 		echo "🏷️  Version bumped: $$newver"
-	git push origin master --follow-tags
+	git push origin main --follow-tags
 	@echo "🚀 Pushed to GitHub"
 	npm publish
 	@echo "📦 Published to npm"
