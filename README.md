@@ -2,6 +2,8 @@
 
 A pi agent extension to accept a short issue message, enhance it with AI and report GitHub issues directly from the chat using the `/ri` command.
 
+![Logo](https://raw.githubusercontent.com/Serhioromano/pi-report-issue/refs/heads/main/icon.png)
+
 ## Features
 
 - `/ri` command to create GitHub issues from natural language descriptions
