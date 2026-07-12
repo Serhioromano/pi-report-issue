@@ -9,3 +9,6 @@ strictModeWhiteList:
   - ^npm ls\b
   - ^npm view\b
   - ^npm install\b
+  - ^git remote\b
+  - ^git branch\b
+  - ^git log\b

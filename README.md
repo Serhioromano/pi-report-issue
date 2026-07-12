@@ -7,9 +7,11 @@ A pi agent extension to accept a short issue message, enhance it with AI and rep
 ## Features
 
 - `/ri` command to create GitHub issues from natural language descriptions
+- **Subagent isolation** — issue creation runs in a separate `pi` process, preserving your main conversation context
+- **Non-blocking** — continue chatting while the subagent creates the issue in the background; result appears as a notification
 - Supports any GitHub repository (`--repo=owner/name`), fork parent (`--repo=parent`), or current repo (default)
 - Extended mode (`-e`/`--extended`) for root cause analysis and proposed fixes
-- Tool gating: the issue creation tool is only active during the `/ri` workflow
+- Tool gating: the `create_github_issue` tool is only available in the subagent, never in the main session
 
 ## Installation
 
@@ -75,10 +77,10 @@ You can combine flags:
 ## How It Works
 
 1. The `/ri` command parses your message and flags
-2. Enables a gated `create_github_issue` tool
-3. Sends analysis instructions to pi's LLM
-4. The LLM analyzes, formats, and calls the tool to create the issue
-5. After the turn, the tool is disabled again
+2. Resolves the target GitHub repository and collects project context
+3. Spawns a **subagent** — a separate `pi` process with an isolated context window
+4. The subagent's LLM analyzes your message, formats it, and calls the `create_github_issue` tool
+5. The issue URL is reported back to you as a notification — while you keep working
 
 ## Requirements
 

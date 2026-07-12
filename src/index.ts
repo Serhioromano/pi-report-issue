@@ -11,6 +11,7 @@ import { Type } from "typebox";
 import { parseArgs } from "./args";
 import { collectDiagnostics } from "./diagnostics";
 import { resolveGitHubRepo } from "./github";
+import { spawnIssueSubagent } from "./subagent";
 
 export default function (pi: ExtensionAPI) {
 	// ── Gating: disable tool by default, enable only during /ri flow ──
@@ -46,8 +47,8 @@ export default function (pi: ExtensionAPI) {
 			label: StringEnum(["bug", "enhancement"] as const),
 		}),
 		async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
-			// ── Runtime guard: refuse if tool was activated outside /ri flow ──
-			if (!pi.getActiveTools().includes("create_github_issue")) {
+			// ── Runtime guard: only allow in subagent context ──
+			if (!process.env.PI_REPORT_ISSUE_SUBAGENT) {
 				throw new Error(
 					"create_github_issue is gated. It can only be called during a /ri command flow. " +
 						"If you want to report an issue, ask the user to use /ri.",
@@ -102,22 +103,18 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// Step 2: Disable tool by default once the runtime is ready, and set up
-	// agent_settled listener to re-disable after every completed turn.
+	// Step 2: Gate the tool — in the main process, never enable it.
+	// In the subagent (PI_REPORT_ISSUE_SUBAGENT=true), it stays active
+	// because the LLM in the isolated context is explicitly instructed to use it.
 	// setActiveTools/getActiveTools are "action methods" — they cannot be
 	// called synchronously during extension factory execution.
-	pi.on("session_start", () => {
-		pi.setActiveTools(
-			pi.getActiveTools().filter((t) => t !== "create_github_issue"),
-		);
-	});
-
-	pi.on("agent_settled", async () => {
-		const active = pi.getActiveTools();
-		if (active.includes("create_github_issue")) {
-			pi.setActiveTools(active.filter((t) => t !== "create_github_issue"));
-		}
-	});
+	if (!process.env.PI_REPORT_ISSUE_SUBAGENT) {
+		pi.on("session_start", () => {
+			pi.setActiveTools(
+				pi.getActiveTools().filter((t) => t !== "create_github_issue"),
+			);
+		});
+	}
 
 	// ── /ri command ──
 
@@ -175,10 +172,7 @@ export default function (pi: ExtensionAPI) {
 			// 4. Collect diagnostics as AI context (NOT appended to issue body)
 			const diagnosticsMd = await collectDiagnostics(pi, ctx.cwd);
 
-			// 5. Enable the gated tool for this turn
-			pi.setActiveTools([...pi.getActiveTools(), "create_github_issue"]);
-
-			// 6. Build instructions based on mode
+			// 5. Build the task for the subagent
 			const extendedTasks = parsed.extended
 				? "6. AFTER creating the issue, search the codebase for the root cause of the problem. Use read/grep tools to examine relevant source files. Trace the issue to specific code.\n" +
 					'7. Include a "## Root Cause Analysis" section in the issue body when creating it. Add file paths, line numbers, and a clear explanation.\n' +
@@ -189,16 +183,44 @@ export default function (pi: ExtensionAPI) {
 				? "9. Report your findings to the user. Do NOT edit any source files.\n"
 				: "6. STOP. Report the issue URL to the user. Do NOT fix the issue. Do NOT edit any source files. Do NOT update CHANGELOG.md, README.md, or AGENTS.md. The user will handle the fix separately.\n";
 
-			// 7. Send instructions to LLM
-			pi.sendUserMessage(
-				`The user reported an issue for **${repo.repo}**.\n\nUser's message:\n"""\n${parsed.message}\n"""\n\nYour task:\n1. Analyze the message — is this a **bug report** or **feature request**?\n2. Create a concise, descriptive issue title (max 80 chars)\n3. Enhance the description: add clarity, context, steps to reproduce (for bugs) or use case (for features). Keep it in the user's voice.\n4. Call the **create_github_issue** tool with repo="${repo.repo}", title, body, and label ("bug" or "enhancement").\n${extendedTasks}${stopInstruction}\nProject context for your analysis (use this to write a better issue — do NOT copy this into the issue body verbatim):\n\n${diagnosticsMd}`,
-				{ deliverAs: "followUp" },
-			);
+			const task = [
+				`The user reported an issue for **${repo.repo}**.`,
+				"",
+				"User's message:",
+				'"""',
+				parsed.message,
+				'"""',
+				"",
+				"Your task:",
+				"1. Analyze the message — is this a **bug report** or **feature request**?",
+				"2. Create a concise, descriptive issue title (max 80 chars)",
+				"3. Enhance the description: add clarity, context, steps to reproduce (for bugs) or use case (for features). Keep it in the user's voice.",
+				`4. Call the **create_github_issue** tool with repo="${repo.repo}", title, body, and label ("bug" or "enhancement").`,
+				extendedTasks,
+				stopInstruction,
+				"Project context for your analysis (use this to write a better issue — do NOT copy this into the issue body verbatim):",
+				"",
+				diagnosticsMd,
+			]
+				.join("\n")
+				.trim();
 
+			// 6. Notify user and spawn subagent (fire-and-forget)
 			ctx.ui.notify(
-				`Analyzing issue for ${repo.repo}${parsed.extended ? " (extended)" : ""}...`,
+				`Creating issue on ${repo.repo}${parsed.extended ? " (extended)" : ""}...`,
 				"info",
 			);
+
+			spawnIssueSubagent(ctx.cwd, task).then((result) => {
+				if (result.success && result.issueUrl) {
+					ctx.ui.notify(`Issue created: ${result.issueUrl}`, "success");
+				} else {
+					ctx.ui.notify(
+						`Failed to create issue: ${result.error || "Unknown error"}`,
+						"error",
+					);
+				}
+			});
 		},
 	});
 }
