@@ -1,6 +1,6 @@
 {
   "name": "pi-report-issue",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "description": "Pi extension to enhance by AI and report GitHub issues from the chat using /ri command",
   "keywords": [
