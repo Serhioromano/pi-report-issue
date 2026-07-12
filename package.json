@@ -1,0 +1,25 @@
+{
+  "name": "pi-report-issue",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Pi extension to enhance by AI and report GitHub issues from the chat using /ri command",
+  "keywords": [
+    "pi",
+    "ai-agent",
+    "pi-extension",
+    "pi-package",
+    "github"
+  ],
+  "pi": {
+    "extensions": ["./src/index.ts"]
+  },
+  "scripts": {
+    "lint": "biome lint src/",
+    "format": "biome format --write src/",
+    "check": "biome check src/"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,6 @@
+src/
+plans/
+.vscode/
+.gitignore
+biome.json
+node_modules/
