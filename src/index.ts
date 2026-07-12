@@ -102,12 +102,16 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// Step 2: Immediately remove from active tools after registration
-	pi.setActiveTools(
-		pi.getActiveTools().filter((t) => t !== "create_github_issue"),
-	);
+	// Step 2: Disable tool by default once the runtime is ready, and set up
+	// agent_settled listener to re-disable after every completed turn.
+	// setActiveTools/getActiveTools are "action methods" — they cannot be
+	// called synchronously during extension factory execution.
+	pi.on("session_start", () => {
+		pi.setActiveTools(
+			pi.getActiveTools().filter((t) => t !== "create_github_issue"),
+		);
+	});
 
-	// Step 3: Ensure tool is re-disabled after every completed agent turn
 	pi.on("agent_settled", async () => {
 		const active = pi.getActiveTools();
 		if (active.includes("create_github_issue")) {

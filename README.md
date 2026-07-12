@@ -22,17 +22,6 @@ A pi agent extension to accept a short issue message, enhance it with AI and rep
 
 ### Install the extension
 
-**Option 1: Symlink (development)**
-
-```bash
-git clone <this-repo>
-cd pi-report-issue
-npm install
-ln -s $(pwd) ~/.pi/agent/extensions/pi-report-issue
-```
-
-**Option 2: pi install (if published)**
-
 ```bash
 pi install npm:pi-report-issue
 ```
@@ -72,6 +61,7 @@ The agent will:
 ```
 
 With `-e` (or `--extended`), the agent will also:
+
 1. Search the codebase for the root cause
 2. Append a "Root Cause Analysis" section to the issue
 3. If a fix is obvious, append a "Proposed Fix" section (without applying it)

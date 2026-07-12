@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [v1.0.0]
 
 ### Added
 - `/ri` command to report GitHub issues from the chat
