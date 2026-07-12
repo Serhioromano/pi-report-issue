@@ -11,7 +11,8 @@
     "github"
   ],
   "pi": {
-    "extensions": ["./src/index.ts"]
+    "extensions": ["./src/index.ts"],
+    "images": ["./src/assets/icon.png"]
   },
   "scripts": {
     "lint": "biome lint src/",

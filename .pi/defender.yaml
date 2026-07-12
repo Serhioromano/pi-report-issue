@@ -2,3 +2,5 @@ defaultMode: strict
 strictModeWhiteList:
   - ^ls\b
   - ^mkdir\b
+  - ^npx biome\b
+  - ^wc\b
