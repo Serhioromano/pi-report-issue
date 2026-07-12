@@ -4,3 +4,8 @@ strictModeWhiteList:
   - ^mkdir\b
   - ^npx biome\b
   - ^wc\b
+  - ^rg\b
+  - ^head\b
+  - ^npm ls\b
+  - ^npm view\b
+  - ^npm install\b
