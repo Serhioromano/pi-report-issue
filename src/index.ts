@@ -11,7 +11,20 @@ import { Type } from "typebox";
 import { parseArgs } from "./args";
 import { collectDiagnostics } from "./diagnostics";
 import { resolveGitHubRepo } from "./github";
+import { fetchIssueGuidelines } from "./guidelines";
 import { spawnIssueSubagent } from "./subagent";
+
+/** Draws a Unicode box around lines for the subagent status widget. */
+function framedWidget(lines: string[], minWidth = 50): string[] {
+	const innerMax = Math.max(minWidth, ...lines.map((l) => l.length));
+	const width = Math.min(innerMax + 4, 80); // +4 for "│ " + " │" padding
+	const bar = "─".repeat(width - 2);
+	const framed = lines.map((line) => {
+		const pad = width - 4 - line.length;
+		return `│ ${line}${pad > 0 ? " ".repeat(pad) : ""} │`;
+	});
+	return [`┌${bar}┐`, ...framed, `└${bar}┘`];
+}
 
 export default function (pi: ExtensionAPI) {
 	// ── Gating: disable tool by default, enable only during /ri flow ──
@@ -172,6 +185,9 @@ export default function (pi: ExtensionAPI) {
 			// 4. Collect diagnostics as AI context (NOT appended to issue body)
 			const diagnosticsMd = await collectDiagnostics(pi, ctx.cwd);
 
+			// 4.5. Fetch repo-specific issue guidelines (templates, CONTRIBUTING.md)
+			const guidelinesMd = await fetchIssueGuidelines(pi, repo.repo);
+
 			// 5. Build the task for the subagent
 			const duplicateCheckStep = [
 				"4. BEFORE creating the issue, search the target repo for existing similar issues:",
@@ -193,18 +209,22 @@ export default function (pi: ExtensionAPI) {
 				? "10. Report your findings to the user. Do NOT edit any source files.\n"
 				: "7. STOP. Report the issue URL to the user. Do NOT fix the issue. Do NOT edit any source files. Do NOT update CHANGELOG.md, README.md, or AGENTS.md. The user will handle the fix separately.\n";
 
+			const guidelinesBlock = guidelinesMd ? [guidelinesMd, "", "---", ""] : [];
+
 			const task = [
 				`The user reported an issue for **${repo.repo}**.`,
 				"",
 				"User's message:",
-				'"""',
+				'<message>',
 				parsed.message,
-				'"""',
+				'</message>',
 				"",
+				...guidelinesBlock,
 				"Your task:",
 				"1. Analyze the message — is this a **bug report** or **feature request**?",
 				"2. Create a concise, descriptive issue title (max 80 chars)",
 				"3. Enhance the description: add clarity, context, steps to reproduce (for bugs) or use case (for features). Keep it in the user's voice.",
+				"3b. If repo guidelines were provided above, follow their structure — use the same section headings and required fields.",
 				duplicateCheckStep,
 				`5. Call the **create_github_issue** tool with repo="${repo.repo}", title, body, and label ("bug" or "enhancement").`,
 				extendedTasks,
@@ -216,21 +236,50 @@ export default function (pi: ExtensionAPI) {
 				.join("\n")
 				.trim();
 
-			// 6. Notify user and spawn subagent (fire-and-forget)
-			ctx.ui.notify(
-				`Creating issue on ${repo.repo}${parsed.extended ? " (extended)" : ""}...`,
-				"info",
-			);
+			// 6. Show subagent status widget + notify, then spawn subagent (fire-and-forget)
+			const subagentLabel = `Creating issue on ${repo.repo}${parsed.extended ? " (extended)" : ""}`;
 
-			spawnIssueSubagent(ctx.cwd, task).then((result) => {
+			ctx.ui.setWidget(
+				"ri-subagent-status",
+				framedWidget(["... Subagent: Initializing..."]),
+				{ placement: "belowEditor" },
+			);
+			ctx.ui.notify(subagentLabel, "info");
+
+			spawnIssueSubagent(ctx.cwd, task, undefined, (stage) => {
+				const stageLabels: Record<string, string> = {
+					analyzing: "... Analyzing request...",
+					searching: "... Searching for duplicates...",
+					creating: "... Creating issue...",
+				};
+				const label = stageLabels[stage] || stage;
+				ctx.ui.setWidget(
+					"ri-subagent-status",
+					framedWidget([`Subagent: ${label}`]),
+					{ placement: "belowEditor" },
+				);
+			}).then((result) => {
 				if (result.success && result.issueUrl) {
+					ctx.ui.setWidget(
+						"ri-subagent-status",
+						framedWidget(["[OK] Issue created", result.issueUrl]),
+						{ placement: "belowEditor" },
+					);
 					ctx.ui.notify(`Issue created: ${result.issueUrl}`, "success");
 				} else {
-					ctx.ui.notify(
-						`Failed to create issue: ${result.error || "Unknown error"}`,
-						"error",
+					const errMsg = result.error || "Unknown error";
+					ctx.ui.setWidget(
+						"ri-subagent-status",
+						framedWidget(["[FAIL] Failed", errMsg]),
+						{ placement: "belowEditor" },
 					);
+					ctx.ui.notify(`Failed to create issue: ${errMsg}`, "error");
 				}
+
+				// Auto-dismiss widget after 5 seconds
+				setTimeout(() => {
+					ctx.ui.setWidget("ri-subagent-status", undefined);
+				}, 5000);
 			});
 		},
 	});

@@ -14,3 +14,7 @@ strictModeWhiteList:
   - ^git log\b
   - ^biome\b
   - ^npm pack\b
+  - ^npx ctx7@latest\b
+  - ^npx ctx7\b
+  - ^cp\b
+  - ^npx tsc\b

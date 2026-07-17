@@ -10,6 +10,7 @@ A pi agent extension to accept a short issue message, enhance it with AI and rep
 - **Subagent isolation** — issue creation runs in a separate `pi` process, preserving your main conversation context
 - **Non-blocking** — continue chatting while the subagent creates the issue in the background; result appears as a notification
 - Supports any GitHub repository (`--repo=owner/name`), fork parent (`--repo=parent`), or current repo (default)
+- **Repo-aware** — auto-detects issue templates (`.github/ISSUE_TEMPLATE/`, `CONTRIBUTING.md`) and tailors the issue body to match each repository's guidelines
 - Extended mode (`-e`/`--extended`) for root cause analysis and proposed fixes
 - Tool gating: the `create_github_issue` tool is only available in the subagent, never in the main session
 
@@ -80,10 +81,13 @@ You can combine flags:
 1. The `/ri` command parses your message and flags
 2. Resolves the target GitHub repository and collects project context
 3. Spawns a **subagent** — a separate `pi` process with an isolated context window
-4. The subagent's LLM analyzes your message, extracts keywords, and searches for existing similar issues via `gh search issues`
-5. If similar issues are found, they are mentioned as "Possible duplicates" in the new issue body — GitHub auto-interlinks them
-6. The subagent formats the issue and calls the `create_github_issue` tool
-7. The issue URL is shown as a notification — while you keep working
+4. **Fetches the target repo's issue guidelines** (`.github/ISSUE_TEMPLATE/`, `.github/ISSUE_TEMPLATE.md`, `CONTRIBUTING.md`) via the GitHub API so the issue body follows the maintainers' expected format
+5. The subagent's LLM analyzes your message, extracts keywords, and searches for existing similar issues via `gh search issues`
+6. If similar issues are found, they are mentioned as "Possible duplicates" in the new issue body — GitHub auto-interlinks them
+7. The subagent formats the issue (following any detected templates) and calls the `create_github_issue` tool
+8. The issue URL is shown as a notification — while you keep working
+
+A **subagent status widget** is pinned at the bottom of the UI during the entire process, showing live status: "Subagent started", "Subagent completed", or "Subagent failed". It auto-dismisses after 5 seconds.
 
 ## Requirements
 

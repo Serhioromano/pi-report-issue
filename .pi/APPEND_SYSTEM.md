@@ -1,5 +1,5 @@
 - **NEVER edit code or files unless explicitly asked to do so.** If asked to investigate, only investigate. If asked to create an issue, only create the issue. Do not fix, revert, or modify anything unless the instruction explicitly says "fix", "implement", "edit", "revert", etc.
-- after apdate to any `*.ts` file, update `README.md` and `CHANGELOG.md`
+- after apdate to any `*.ts` file, update `README.md` and `CHANGELOG.md` create small summary for commit message.
 - In `CHANGELOG.md` save new data under (## [Unreleased]) title. If it is not there create it.
 - Look pi documentaion for best practice
 - When work with issues and PR use gh CLI

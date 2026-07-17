@@ -14,6 +14,14 @@ export interface SubagentResult {
 	rawOutput?: string;
 }
 
+/** Stages the subagent reports during execution. */
+export type SubagentStage =
+	| "analyzing"
+	| "searching"
+	| "creating"
+	| "completed"
+	| "failed";
+
 /**
  * Spawns a pi subprocess to create a GitHub issue.
  *
@@ -33,6 +41,7 @@ export async function spawnIssueSubagent(
 	cwd: string,
 	task: string,
 	signal?: AbortSignal,
+	onStage?: (stage: SubagentStage, detail?: string) => void,
 ): Promise<SubagentResult> {
 	const piInvocation = resolvePiInvocation();
 	const extensionPath = resolveExtensionPath();
@@ -64,6 +73,19 @@ export async function spawnIssueSubagent(
 		let stderr = "";
 		let lastAssistantText = "";
 
+		// Track which stages have been reported to avoid duplicates
+		const stageReported: Record<string, boolean> = {};
+
+		const onToolCall = (name: string) => {
+			if (name === "bash" && !stageReported.searching) {
+				stageReported.searching = true;
+				onStage?.("searching");
+			} else if (name === "create_github_issue" && !stageReported.creating) {
+				stageReported.creating = true;
+				onStage?.("creating");
+			}
+		};
+
 		proc.stdout.on("data", (data: Buffer) => {
 			buffer += data.toString();
 			const lines = buffer.split("\n");
@@ -73,9 +95,18 @@ export async function spawnIssueSubagent(
 				if (!line.trim()) continue;
 				try {
 					const event = JSON.parse(line) as JsonEvent;
-					processEvent(event, messages, (text) => {
-						lastAssistantText = text;
-					});
+					processEvent(
+						event,
+						messages,
+						(text) => {
+							lastAssistantText = text;
+							if (!stageReported.analyzing) {
+								stageReported.analyzing = true;
+								onStage?.("analyzing");
+							}
+						},
+						onToolCall,
+					);
 				} catch {
 					// Ignore unparseable lines (partial writes, non-JSON output)
 				}
@@ -91,9 +122,18 @@ export async function spawnIssueSubagent(
 			if (buffer.trim()) {
 				try {
 					const event = JSON.parse(buffer.trim()) as JsonEvent;
-					processEvent(event, messages, (text) => {
-						lastAssistantText = text;
-					});
+					processEvent(
+						event,
+						messages,
+						(text) => {
+							lastAssistantText = text;
+							if (!stageReported.analyzing) {
+								stageReported.analyzing = true;
+								onStage?.("analyzing");
+							}
+						},
+						onToolCall,
+					);
 				} catch {
 					/* ignore */
 				}
@@ -166,11 +206,12 @@ type JsonContentPart =
 	| { type: "toolCall"; name: string; arguments: Record<string, unknown> }
 	| { type: "toolResult"; toolCallId: string; content: unknown };
 
-/** Processes a single JSON event, extracting assistant text and storing messages. */
+/** Processes a single JSON event, extracting assistant text and tool calls. */
 function processEvent(
 	event: JsonEvent,
 	messages: JsonMessage[],
 	onAssistantText: (text: string) => void,
+	onToolCall?: (name: string) => void,
 ): void {
 	if (
 		(event.type === "message_end" || event.type === "tool_result_end") &&
@@ -182,6 +223,9 @@ function processEvent(
 			for (const part of event.message.content) {
 				if (part.type === "text") {
 					onAssistantText(part.text);
+				}
+				if (part.type === "toolCall" && onToolCall) {
+					onToolCall(part.name);
 				}
 			}
 		}

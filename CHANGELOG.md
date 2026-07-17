@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Repo-specific issue guidelines detection (#4)
+  - `/ri` now fetches the target repo's issue templates via the GitHub API
+  - Checks `.github/ISSUE_TEMPLATE/` directory, `.github/ISSUE_TEMPLATE.md`, and `CONTRIBUTING.md`
+  - Injects parsed guidelines into the subagent prompt so the generated issue body matches each repo's expected format
+- `src/guidelines.ts` — fetches and parses issue templates/guidelines from any GitHub repo
+- Pinned subagent status widget at bottom of UI (#3)
+  - Unicode box-drawn frame with live progress stages
+  - Real-time stage detection from subagent JSON events:
+    - "⏳ Analyzing request..." — when LLM starts processing
+    - "🔍 Searching for duplicates..." — when `gh search issues` runs
+    - "📝 Creating issue..." — when `create_github_issue` tool is called
+  - Completion: "✅ Issue created" with URL, or "❌ Failed" with error
+  - Auto-dismisses after 5 seconds
+
+### Fixed
+- Subagent no longer loads globally installed extensions (`--no-extensions`), fixing tool name conflicts
+
 ## [v2.0.1]
 
 ### Added
