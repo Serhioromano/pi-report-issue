@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [v2.0.4]
 
 ### Added
 - Repo-specific issue guidelines detection (#4)
