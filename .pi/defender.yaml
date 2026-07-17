@@ -13,3 +13,4 @@ strictModeWhiteList:
   - ^git branch\b
   - ^git log\b
   - ^biome\b
+  - ^npm pack\b
